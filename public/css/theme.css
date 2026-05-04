@@ -1,0 +1,124 @@
+/* 
+   VitalSync Design System
+   Cyber-Minimalist / Clinical High-Tech
+   Inspired by: Dribbble/Outcrowd 
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Color Palette */
+    --bg-main: #0D0D0F;
+    --bg-card: #151518;
+    --accent-primary: #00F2B8; /* Medical Neon Green */
+    --accent-secondary: #FF4D97; /* Pulse Magenta */
+    --accent-glow: rgba(0, 242, 184, 0.15);
+    --text-primary: #FFFFFF;
+    --text-secondary: #8E8EA0;
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --glass-blur: blur(12px);
+    
+    /* Spacing & Radii */
+    --radius-lg: 32px;
+    --radius-md: 16px;
+    --container-max: 1200px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Glassmorphism Classes */
+.glass {
+    background: rgba(21, 21, 24, 0.7);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+}
+
+.bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: minmax(100px, auto);
+    gap: 24px;
+    max-width: var(--container-max);
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.card {
+    padding: 24px;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-primary);
+}
+
+/* Buttons */
+.btn {
+    padding: 12px 28px;
+    border-radius: 99px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: var(--accent-primary);
+    color: var(--bg-main);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 0 20px var(--accent-glow);
+    filter: brightness(1.1);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+}
+
+.btn-outline:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Typography */
+h1 { font-size: 4rem; font-weight: 700; letter-spacing: -2px; line-height: 1.1; }
+h2 { font-size: 2.5rem; font-weight: 600; }
+.text-gradient {
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Animations */
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+    100% { transform: translateY(0px); }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}

@@ -1,0 +1,88 @@
+{
+	"default": "/vision_bundle.min.mjs",
+	"files": [
+		{
+			"type": "directory",
+			"name": "wasm",
+			"files": [
+				{
+					"type": "file",
+					"name": "vision_wasm_internal.js",
+					"hash": "anNgKhRIQpdpDmnXFuaDNBtipf3o9d69543iZRy2m74=",
+					"time": "1985-10-26T08:15:00.000Z",
+					"size": 205745
+				},
+				{
+					"type": "file",
+					"name": "vision_wasm_internal.wasm",
+					"hash": "NDH3AHHzmAvxPmOFUem7MzM1Ij41VC7naNsGUB96JvI=",
+					"time": "1985-10-26T08:15:00.000Z",
+					"size": 8689767
+				},
+				{
+					"type": "file",
+					"name": "vision_wasm_nosimd_internal.js",
+					"hash": "7OmsH0G5M0CwhoJRTKKRQx/3CEyFjK9kVeZbDGw+txc=",
+					"time": "1985-10-26T08:15:00.000Z",
+					"size": 205752
+				},
+				{
+					"type": "file",
+					"name": "vision_wasm_nosimd_internal.wasm",
+					"hash": "TVRzlxTbaz0PvdBgjCgkxMzOqvJ5qkuhYPLqsmY7MPI=",
+					"time": "1985-10-26T08:15:00.000Z",
+					"size": 8554370
+				}
+			]
+		},
+		{
+			"type": "file",
+			"name": "package.json",
+			"hash": "3fo5Tp4SGVkHRlqY9z41C6HGjYx7w1/Wu1FVNays2fE=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 560
+		},
+		{
+			"type": "file",
+			"name": "README.md",
+			"hash": "4iS9+7yvdmzo1zfzIyhfS9tiZsNdSQvVAau80VOvW5w=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 8294
+		},
+		{
+			"type": "file",
+			"name": "vision.d.ts",
+			"hash": "awiyfLhrlMH85XSOq8apQFCrTnOg/FW3pT9ujYZsTsg=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 106152
+		},
+		{
+			"type": "file",
+			"name": "vision_bundle.cjs",
+			"hash": "d8nFVWSQ8bj7T+hvtw9420WZYGCJOUYq7P8YS4anKAo=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 880556
+		},
+		{
+			"type": "file",
+			"name": "vision_bundle.cjs.map",
+			"hash": "IWe/BA5g7IgS9p9ijH53BBpphCanfBZvLJ2cqVWc3d4=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 3638844
+		},
+		{
+			"type": "file",
+			"name": "vision_bundle.mjs",
+			"hash": "oin/W9S2zzMOh7POY7hGEHZ8VSHTZbm0osrbAR+IWww=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 881037
+		},
+		{
+			"type": "file",
+			"name": "vision_bundle.mjs.map",
+			"hash": "HTN+A3kVQoT5/E20x/259MPwGqO116N0mt5IymWMh5U=",
+			"time": "1985-10-26T08:15:00.000Z",
+			"size": 3638788
+		}
+	]
+}

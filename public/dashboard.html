@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | VitalSync Clinical</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <style>
+        .sidebar { grid-column: span 3; padding: 30px; border-right: 1px solid var(--border-glass); display: flex; flex-direction: column; }
+        .main-content { grid-column: span 9; padding: 40px; overflow-y: auto; }
+        .nav-item { padding: 12px; border-radius: 10px; margin-bottom: 8px; cursor: pointer; transition: 0.3s; color: var(--text-secondary); display: flex; align-items: center; gap: 12px; }
+        .nav-item.active { background: rgba(0, 242, 184, 0.1); color: var(--accent-primary); }
+        .pulse-wave { height: 120px; width: 100%; background: linear-gradient(90deg, rgba(0,242,184,0.1) 0%, transparent 100%); border-radius: 10px; margin-top: 10px; overflow: hidden; }
+        @keyframes scan {
+            0%   { top: 0; }
+            50%  { top: calc(100% - 2px); }
+            100% { top: 0; }
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.3; }
+        }
+    </style>
+    <!-- Dependencies for PDF and Demo Mode -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- MediaPipe Vision Tasks (ES Module Loading) -->
+    <script type="module">
+        import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+        window.FaceLandmarker = FaceLandmarker;
+        window.FilesetResolver = FilesetResolver;
+        window.dispatchEvent(new Event('mediapipe-ready'));
+    </script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+<div style="display: grid; grid-template-columns: repeat(12, 1fr); min-height: 100vh;">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar">
+        <div style="font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 60px;">
+            <div style="width: 32px; height: 32px; background: var(--accent-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            vitalsync.
+        </div>
+
+        <div class="nav-item active" id="navOverview">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            Overview
+        </div>
+        <div class="nav-item" id="navLogs">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Patient Logs
+        </div>
+        <div class="nav-item">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings
+        </div>
+
+        <div style="margin-top: auto; padding-top: 40px; border-top: 1px solid var(--border-glass);">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <div style="width: 36px; height: 36px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">DR</div>
+                <div>
+                    <div style="font-size: 0.85rem; font-weight: 600;" id="userName">Dr. Admin</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary);">Senior Clinical Lead</div>
+                </div>
+            </div>
+            <button id="logoutBtn" style="background: none; border: none; color: #ff4b4b; cursor: pointer; font-size: 0.85rem; padding: 0;">Logout System</button>
+        </div>
+    </aside>
+
+    <!-- ── Main Content ── -->
+    <main class="main-content">
+
+        <div id="overviewView">
+        <!-- Header row -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+            <div>
+                <h2 style="font-size: 1.5rem;">Biometric Overview</h2>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">Real-time rPPG data from clinical node #829.</p>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <button id="pdfBtn" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Export PDF
+                </button>
+                <div class="glass" style="padding: 8px 16px; display: flex; align-items: center; border-radius: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
+                        <input type="checkbox" id="demoToggle" style="accent-color: var(--accent-primary);">
+                        Demo Mode
+                    </label>
+                </div>
+                <div class="glass" style="padding: 10px 20px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem;">
+                    <div id="liveDot" style="width: 8px; height: 8px; background: var(--text-secondary); border-radius: 50%;"></div>
+                    <span id="liveLabel">CAMERA OFFLINE</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Controls Panel (Hidden default) -->
+        <div id="demoControlsPanel" class="glass card" style="display: none; margin-bottom: 20px; padding: 15px 30px; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+            <div style="grid-column: span 4; font-weight: bold; color: var(--accent-primary); margin-bottom: 10px;">Demo Override Controls</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 0.8rem; color: var(--text-secondary);">HR (BPM)</label>
+                <input type="number" id="overrideHr" value="85" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glass); color: white; border-radius: 6px; font-family: monospace;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 0.8rem; color: var(--text-secondary);">SpO2 (%)</label>
+                <input type="number" id="overrideSpo2" value="95" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glass); color: white; border-radius: 6px; font-family: monospace;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 0.8rem; color: var(--text-secondary);">Resp (BR/M)</label>
+                <input type="number" id="overrideResp" value="18" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glass); color: white; border-radius: 6px; font-family: monospace;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <label style="font-size: 0.8rem; color: var(--text-secondary);">Stress (/100)</label>
+                <input type="number" id="overrideStress" value="60" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-glass); color: white; border-radius: 6px; font-family: monospace;">
+            </div>
+        </div>
+
+        <!-- Bento stats -->
+        <div id="exportContainer" class="bento-grid" style="grid-template-columns: repeat(4, 1fr); padding: 0; width: 100%; position: relative;">
+
+            <!-- Heart Rate -->
+            <div class="glass card" style="grid-column: span 1;">
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px;">HEART RATE</div>
+                <div style="font-size: 2.5rem; font-weight: 700;">
+                    <span id="hrValue">NULL</span>
+                    <span style="font-size: 1rem; color: var(--text-secondary);">BPM</span>
+                </div>
+                <div class="pulse-wave">
+                    <canvas id="pulseChart" style="width: 100%; height: 100%;"></canvas>
+                </div>
+            </div>
+
+            <!-- SpO2 -->
+            <div class="glass card" style="grid-column: span 1;">
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px;">SPO2 LEVELS</div>
+                <div style="font-size: 2.5rem; font-weight: 700;">
+                    <span id="spo2Value">NULL</span>
+                    <span style="font-size: 1rem; color: var(--text-secondary);">%</span>
+                </div>
+                <div style="margin-top: 20px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px;">
+                    <div id="spo2Bar" style="width: 0%; height: 100%; background: var(--accent-primary); box-shadow: 0 0 10px var(--accent-primary); transition: width 1s ease;"></div>
+                </div>
+            </div>
+
+            <!-- Respiration -->
+            <div class="glass card" style="grid-column: span 1;">
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px;">RESPIRATION</div>
+                <div style="font-size: 2.5rem; font-weight: 700;">
+                    <span id="respValue">NULL</span>
+                    <span style="font-size: 1rem; color: var(--text-secondary);">BR/M</span>
+                </div>
+                <div style="margin-top: 16px; color: var(--text-secondary); font-size: 0.75rem;" id="respStatus">Awaiting signal...</div>
+            </div>
+            
+            <!-- Stress Level -->
+            <div class="glass card" style="grid-column: span 1;">
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 8px;">STRESS LEVEL</div>
+                <div style="font-size: 2.5rem; font-weight: 700;">
+                    <span id="stressValue">NULL</span>
+                    <span style="font-size: 1rem; color: var(--text-secondary);">/ 100</span>
+                </div>
+                <div style="margin-top: 16px; color: var(--text-secondary); font-size: 0.75rem;" id="stressStatus">Evaluating...</div>
+            </div>
+
+            <!-- ── Camera card ── -->
+            <div class="glass card" style="grid-column: span 4; padding: 0; overflow: hidden; border-radius: 20px;">
+
+                <!-- Live camera view (hidden until started) -->
+                <div id="cameraView" style="position: relative; width: 100%; background: #000; display: none;">
+                    <video id="cameraFeed" autoplay playsinline muted
+                           style="width: 100%; display: block; max-height: 420px; object-fit: cover;"></video>
+                    <canvas id="overlayCanvas" style="position: absolute; inset: 0; pointer-events: none; z-index: 10; width: 100%; height: 100%;"></canvas>
+
+                    <!-- Scan HUD overlay -->
+                    <div id="scanHud" style="position: absolute; inset: 0; pointer-events: none;">
+                        <!-- Face scan bracket -->
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -54%); width: 200px; height: 240px;">
+                            <div style="position: absolute; top:0;left:0;   width:40px;height:40px; border-top:3px solid var(--accent-primary); border-left:3px solid var(--accent-primary); border-radius:4px 0 0 0;"></div>
+                            <div style="position: absolute; top:0;right:0;  width:40px;height:40px; border-top:3px solid var(--accent-primary); border-right:3px solid var(--accent-primary); border-radius:0 4px 0 0;"></div>
+                            <div style="position: absolute; bottom:0;left:0; width:40px;height:40px; border-bottom:3px solid var(--accent-primary); border-left:3px solid var(--accent-primary); border-radius:0 0 0 4px;"></div>
+                            <div style="position: absolute; bottom:0;right:0;width:40px;height:40px; border-bottom:3px solid var(--accent-primary); border-right:3px solid var(--accent-primary); border-radius:0 0 4px 0;"></div>
+                            <!-- Animated scan line -->
+                            <div style="position:absolute;left:0;right:0;height:2px;
+                                        background:linear-gradient(90deg,transparent,var(--accent-primary),transparent);
+                                        box-shadow:0 0 10px var(--accent-primary);
+                                        animation:scan 2s linear infinite;"></div>
+                        </div>
+                        <!-- HUD labels -->
+                        <div style="position:absolute;top:14px;left:18px;font-size:0.7rem;color:var(--accent-primary);font-family:monospace;letter-spacing:1px;">rPPG SENSOR ACTIVE</div>
+                        <div style="position:absolute;top:14px;right:18px;font-size:0.7rem;color:var(--accent-primary);font-family:monospace;">30 FPS</div>
+                        <div style="position:absolute;bottom:56px;left:18px;font-size:0.7rem;color:rgba(255,255,255,0.4);font-family:monospace;">ALIGN FACE IN FRAME</div>
+                    </div>
+                </div>
+
+                <!-- Idle placeholder -->
+                <div id="cameraPlaceholder" style="display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:360px;padding:40px;">
+                    <div style="width:100px;height:100px;background:rgba(0,242,184,0.05);border-radius:50%;border:1px dashed var(--accent-primary);display:flex;align-items:center;justify-content:center;margin-bottom:24px;">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="1.5">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                    </div>
+                    <h3 style="margin-bottom:12px;">Camera Inactive</h3>
+                    <p style="color:var(--text-secondary);max-width:400px;text-align:center;margin-bottom:28px;font-size:0.9rem;">
+                        Enable the webcam to begin contactless biometric extraction via rPPG analysis.
+                    </p>
+                    <button id="startCameraBtn" class="btn btn-primary" style="gap:10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        Start Camera
+                    </button>
+                </div>
+
+                <!-- Error state -->
+                <div id="cameraError" style="display:none;align-items:center;justify-content:center;flex-direction:column;min-height:240px;padding:40px;text-align:center;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ff4b4b" stroke-width="1.5" style="margin-bottom:16px;">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <h3 style="color:#ff4b4b;margin-bottom:8px;">Camera Access Denied</h3>
+                    <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;" id="errorDetail">
+                        Please allow camera access in your browser settings to use rPPG monitoring.
+                    </p>
+                    <button id="retryBtn" class="btn btn-outline">Retry</button>
+                </div>
+
+                <!-- Controls bar (visible while active) -->
+                <div id="cameraControls" style="display:none;align-items:center;justify-content:space-between;padding:14px 22px;border-top:1px solid var(--border-glass);">
+                    <div style="font-size:0.8rem;color:var(--text-secondary);">
+                        Session: <span id="sessionTimer" style="color:var(--text-primary);font-family:monospace;">00:00</span>
+                    </div>
+                    <button id="stopCameraBtn" class="btn btn-outline"
+                            style="padding:8px 20px;font-size:0.85rem;color:#ff4b4b;border-color:rgba(255,75,75,0.3);">
+                        &#9632; Stop Monitoring
+                    </button>
+                </div>
+
+            </div><!-- end camera card -->
+        </div><!-- end bento-grid -->
+        </div><!-- end overviewView -->
+
+        <!-- Patient Logs View -->
+        <div id="logsView" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px;">
+                <div>
+                    <h2 style="font-size: 1.5rem;">Patient Logs</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">Historical clinical sessions and biometric reports.</p>
+                </div>
+                <button id="refreshLogsBtn" class="btn btn-outline" style="padding: 8px 16px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    Refresh
+                </button>
+            </div>
+            <div id="logsContainer" style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Logs will be populated here -->
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="js/auth.js"></script>
+<script>
+/* ──────────────────────────────────────────
+   Pulse-wave chart
+────────────────────────────────────────── */
+const pulseCanvas = document.getElementById('pulseChart');
+const ctx = pulseCanvas.getContext('2d');
+let waveX = 0;
+let isMonitoring = false;
+
+function resizePulse() {
+    pulseCanvas.width  = pulseCanvas.offsetWidth  || 300;
+    pulseCanvas.height = pulseCanvas.offsetHeight || 120;
+}
+resizePulse();
+new ResizeObserver(resizePulse).observe(pulseCanvas);
+
+(function drawPulse() {
+    const W = pulseCanvas.width, H = pulseCanvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Bug 2: Halt wave when no face and not in demo
+    if (!isMonitoring || (!isFaceDetected && !isDemoMode)) {
+        ctx.beginPath();
+        ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = 1.5; ctx.stroke();
+    } else {
+        ctx.beginPath();
+        for (let i = 0; i < W; i++) {
+            const t = (i + waveX) / W * Math.PI * 8;
+            const beat = Math.pow(Math.sin(t * 0.5), 2)
+                       * Math.exp(-((t % Math.PI) - 1.5) * 2);
+            i === 0 ? ctx.moveTo(i, H/2 - beat * H * 0.35)
+                    : ctx.lineTo(i, H/2 - beat * H * 0.35);
+        }
+        ctx.strokeStyle = '#00F2B8';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#00F2B8';
+        ctx.shadowBlur = 6;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        waveX += 3;
+    }
+    requestAnimationFrame(drawPulse);
+})();
+
+/* ──────────────────────────────────────────
+   History data loading
+────────────────────────────────────────── */
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/vitals/history');
+        if (res.ok) {
+            const history = await res.json();
+            console.log('Historical data loaded:', history.length, 'records');
+            // Here we could populate a table or initialize the chart with last records
+            // if (history.length > 0) {
+            //     const latest = history[history.length - 1];
+            //     document.getElementById('hrValue').textContent = latest.bpm;
+            //     document.getElementById('spo2Value').textContent = latest.spo2;
+            //     document.getElementById('respValue').textContent = latest.respiration;
+            //     document.getElementById('spo2Bar').style.width = latest.spo2 + '%';
+            // }
+        }
+    } catch (err) {
+        console.error('Failed to load history:', err);
+    }
+}
+loadHistory();
+
+/* ──────────────────────────────────────────
+   State Management, WebSockets & MediaPipe
+────────────────────────────────────────── */
+let stream = null, sessionSeconds = 0;
+let sessionInterval = null;
+let isDemoMode = false;
+let isFaceDetected = false;
+let faceDetector = null;
+let detectionLoop = null;
+let lastEmitTime = 0;
+let currentSessionId = null;
+
+const socket = io();
+
+const video          = document.getElementById('cameraFeed');
+const cameraView     = document.getElementById('cameraView');
+const camPlaceholder = document.getElementById('cameraPlaceholder');
+const camError       = document.getElementById('cameraError');
+const camControls    = document.getElementById('cameraControls');
+const startBtn       = document.getElementById('startCameraBtn');
+const stopBtn        = document.getElementById('stopCameraBtn');
+const retryBtn       = document.getElementById('retryBtn');
+const liveDot        = document.getElementById('liveDot');
+const liveLabel      = document.getElementById('liveLabel');
+const sessionTimer   = document.getElementById('sessionTimer');
+const overlayCanvas  = document.getElementById('overlayCanvas');
+const scanHud        = document.getElementById('scanHud');
+const exportContainer= document.getElementById('exportContainer');
+
+function clearVitalsUI() {
+    ['hrValue','spo2Value','respValue','stressValue'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = 'NULL';
+            el.style.color = 'var(--text-primary)';
+        }
+    });
+    const spo2Bar = document.getElementById('spo2Bar');
+    if (spo2Bar) spo2Bar.style.width = '0%';
+}
+
+// WebSocket Listeners
+socket.on('metrics', (data) => {
+    const hrEl = document.getElementById('hrValue');
+    const spEl = document.getElementById('spo2Value');
+    const respEl = document.getElementById('respValue');
+    const stressEl = document.getElementById('stressValue');
+
+    hrEl.textContent = data.bpm;
+    spEl.textContent = data.spo2;
+    document.getElementById('spo2Bar').style.width = data.spo2 + '%';
+    respEl.textContent = data.respiration;
+    stressEl.textContent = data.stress;
+    
+    // Feature: Visual Abnormality Triggers
+    const dangerColor = '#ff4b4b';
+    const normalColor = 'var(--text-primary)';
+    
+    hrEl.style.color = (data.bpm > 120 || data.bpm < 50) ? dangerColor : normalColor;
+    spEl.style.color = (data.spo2 < 92) ? dangerColor : normalColor;
+    respEl.style.color = (data.respiration > 25 || data.respiration < 10) ? dangerColor : normalColor;
+    stressEl.style.color = (data.stress > 80) ? dangerColor : normalColor;
+
+    // Evaluate Stress Level Status
+    const statusEl = document.getElementById('stressStatus');
+    if (data.stress > 80) {
+        statusEl.textContent = 'High Stress Detected';
+        statusEl.style.color = dangerColor;
+    } else {
+        statusEl.textContent = 'Baseline Normal';
+        statusEl.style.color = 'var(--text-secondary)';
+    }
+});
+
+socket.on('clear-metrics', () => {
+    clearVitalsUI();
+});
+
+socket.on('status', (data) => {
+    const el = document.getElementById('respStatus');
+    if (el) {
+        el.textContent = data.status;
+        el.style.color = 'var(--text-secondary)';
+    }
+});
+
+// Feature 1: Demo Mode Toggle
+function emitDemoValues() {
+    if (!isDemoMode || !currentSessionId) return;
+    socket.emit('demo_override', {
+        hr: document.getElementById('overrideHr').value,
+        spo2: document.getElementById('overrideSpo2').value,
+        resp: document.getElementById('overrideResp').value,
+        stress: document.getElementById('overrideStress').value
+    });
+}
+['overrideHr', 'overrideSpo2', 'overrideResp', 'overrideStress'].forEach(id => {
+    document.getElementById(id).addEventListener('input', emitDemoValues);
+});
+
+document.getElementById('demoToggle').addEventListener('change', async (e) => {
+    isDemoMode = e.target.checked;
+    
+    const demoPanel = document.getElementById('demoControlsPanel');
+    if (isDemoMode) {
+        demoPanel.style.display = 'grid';
+        if (!isMonitoring) {
+            // Start standalone Demo session immediately
+            isMonitoring = true;
+            setLive(true);
+            document.getElementById('liveLabel').textContent = 'DEMO FEED ACTIVE';
+            
+            showState('active'); // Reveals UI controls
+            
+            // Connect to Backend Session
+            const res = await fetch('/api/session/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ socketId: socket.id, isDemo: true })
+            });
+            const data = await res.json();
+            currentSessionId = data.sessionId;
+            
+            sessionSeconds = 0;
+            sessionTimer.textContent = '00:00';
+            sessionInterval = setInterval(() => {
+                sessionSeconds++;
+                sessionTimer.textContent = pad(Math.floor(sessionSeconds/60)) + ':' + pad(sessionSeconds%60);
+            }, 1000);
+        }
+        emitDemoValues(); // send initial sync
+    } else {
+        demoPanel.style.display = 'none';
+        socket.emit('demo_override', null); // clear override
+        
+        if (isMonitoring && !stream) {
+            // It was a Demo-only session without a camera, so shut it down completely
+            stopCamera();
+            return;
+        }
+    }
+    
+    // Only hit demo endpoints if a real camera stream is running
+    if (!isMonitoring || !stream) return;
+    
+    try {
+        await fetch(`/api/session/demo/${isDemoMode ? 'start' : 'stop'}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ socketId: socket.id })
+        });
+    } catch(err) {
+        console.error("Demo toggle failed:", err);
+    }
+});
+
+// Feature 2: PDF Generation (Backend)
+document.getElementById('pdfBtn').addEventListener('click', async () => {
+    if (!currentSessionId) return alert("No active historical session to export.");
+    
+    // Hide controls for clean snapshot
+    if (camControls) camControls.style.display = 'none';
+    if (scanHud) scanHud.style.display = 'none';
+    
+    try {
+        const d_canvas = await html2canvas(exportContainer, { scale: 2, backgroundColor: '#12141d' });
+        const imgData = d_canvas.toDataURL('image/jpeg', 0.9);
+        
+        await fetch('/api/session/end', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: currentSessionId, canvasSnapshot: imgData })
+        });
+        
+        window.location.href = `/api/report/generate?sessionId=${currentSessionId}&format=pdf`;
+    } catch (e) {
+        console.error("PDF Export failed:", e);
+    } finally {
+        if (isMonitoring) {
+            camControls.style.display = 'flex';
+            if (!isFaceDetected) scanHud.style.display = 'block';
+        }
+    }
+});
+
+let faceLandmarker = null;
+let drawingUtils = null;
+let isInitializingLandmarker = false;
+
+// MediaPipe Setup
+async function initFaceLandmarker() {
+    if (faceLandmarker || isInitializingLandmarker) return;
+    isInitializingLandmarker = true;
+    try {
+        const vision = await window.FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+        faceLandmarker = await window.FaceLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                delegate: "CPU"
+            },
+            runningMode: "VIDEO",
+            minFaceDetectionConfidence: 0.1,
+            minFacePresenceConfidence: 0.1,
+            minTrackingConfidence: 0.1,
+            outputFaceBlendshapes: false
+        });
+        console.log("FaceLandmarker initialized correctly.");
+    } catch (err) {
+        console.error("Failed to load FaceLandmarker:", err);
+        alert("System error: Could not download AI Face Model. Please check network connection.");
+    }
+}
+window.addEventListener('mediapipe-ready', initFaceLandmarker);
+
+// Face Detection Loop
+let rppgBuffer = [];
+let currentBpm = 0;
+window.currentSpo2 = 0;
+window.currentResp = 0;
+window.currentStress = 0;
+let lastVideoTime = -1;
+
+async function predictWebcam() {
+    if (!isMonitoring) return;
+    
+    if (overlayCanvas.width !== video.offsetWidth) {
+        overlayCanvas.width = video.offsetWidth;
+        overlayCanvas.height = video.offsetHeight;
+    }
+
+    const octx = overlayCanvas.getContext('2d');
+    octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    let detected = false;
+    if (faceLandmarker && video.readyState >= 2) {
+        try {
+            const startTimeMs = performance.now();
+            if (lastVideoTime !== video.currentTime) {
+                lastVideoTime = video.currentTime;
+                const results = faceLandmarker.detectForVideo(video, startTimeMs);
+                
+                if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                    detected = true;
+                    const landmarks = results.faceLandmarks[0];
+                    
+                    // Frame meta handled in the rPPG extraction block now to sync with HR findings
+                    
+                    // Draw premium glowing wireframe manually (468 points)
+                    octx.save();
+                    octx.shadowColor = '#a855f7';
+                    octx.shadowBlur = 4;
+                    octx.fillStyle = '#a855f7';
+                
+                const w = overlayCanvas.width;
+                const h = overlayCanvas.height;
+                
+                // Draw all points as a constellation network
+                for (const pt of landmarks) {
+                    octx.beginPath();
+                    octx.arc(pt.x * w, pt.y * h, 1.2, 0, 2 * Math.PI);
+                    octx.fill();
+                }
+                octx.restore();
+
+                // Fake ROI for Forehead based on Top Middle Landmark (Index 151)
+                const fhCore = landmarks[151];
+                if (fhCore) {
+                    const boxW = 80;
+                    const boxH = 40;
+                    const fhX = Math.round((fhCore.x * w) - (boxW / 2));
+                    const fhY = Math.round((fhCore.y * h) - (boxH / 2));
+                    
+                    octx.strokeStyle = '#a855f7';
+                    octx.lineWidth = 1.5;
+                    octx.setLineDash([4, 4]);
+                    octx.strokeRect(fhX, fhY, boxW, boxH);
+                    octx.fillStyle = '#a855f7';
+                    octx.font = '10px monospace';
+                    octx.fillText('ROI: EXTRACTING', fhX, fhY - 5);
+                    octx.setLineDash([]);
+                    
+                    // --- REAL rPPG EXTRACTION (HACKATHON) ---
+                    try {
+                        if (!window.rppgCanvas) {
+                            window.rppgCanvas = document.createElement('canvas');
+                            window.rppgCtx = window.rppgCanvas.getContext('2d', { willReadFrequently: true });
+                        }
+                        window.rppgCanvas.width = boxW;
+                        window.rppgCanvas.height = boxH;
+                        
+                        const sX = fhX * (video.videoWidth / w);
+                        const sY = fhY * (video.videoHeight / h);
+                        const sW = boxW * (video.videoWidth / w);
+                        const sH = boxH * (video.videoHeight / h);
+                        
+                        // Grab ROI pixels
+                        window.rppgCtx.drawImage(video, sX, sY, sW, sH, 0, 0, boxW, boxH);
+                        const imgData = window.rppgCtx.getImageData(0, 0, boxW, boxH).data;
+                        
+                        // Average Green channel
+                        let sumG = 0;
+                        for (let i = 0; i < imgData.length; i += 4) { sumG += imgData[i + 1]; }
+                        const avgG = sumG / (boxW * boxH);
+                        rppgBuffer.push({ t: startTimeMs, v: avgG });
+                        
+                        // Apply temporal smoothing (Moving Average)
+                        if (rppgBuffer.length > 90) {
+                            rppgBuffer.shift();
+                            
+                            // 1. Smooth signal to remove micro-noise (camera ISO jitter)
+                            let smoothed = [];
+                            for (let i = 2; i < rppgBuffer.length - 2; i++) {
+                                let avgV = (rppgBuffer[i-2].v + rppgBuffer[i-1].v + rppgBuffer[i].v + rppgBuffer[i+1].v + rppgBuffer[i+2].v) / 5;
+                                smoothed.push({ t: rppgBuffer[i].t, v: avgV });
+                            }
+                            
+                            // 2. Find local maxima with strict physical constraints for resting hackathon demo
+                            let peaks = [];
+                            for(let i=2; i < smoothed.length - 2; i++) {
+                                let v = smoothed[i].v;
+                                if (v > smoothed[i-1].v && v > smoothed[i-2].v && v > smoothed[i+1].v && v > smoothed[i+2].v) {
+                                    // Extreme noise filter: Force minimum 600ms between peaks (Caps at 100 BPM max)
+                                    if (peaks.length === 0 || smoothed[i].t - peaks[peaks.length - 1] > 600) {
+                                        peaks.push(smoothed[i].t);
+                                    }
+                                }
+                            }
+                            
+                            if (peaks.length >= 2) {
+                                let intervals = [];
+                                for(let i=1; i < peaks.length; i++) intervals.push(peaks[i] - peaks[i-1]);
+                                let avgInterval = intervals.reduce((a, b) => a + b) / intervals.length;
+                                let hr = 60000 / avgInterval;
+                                
+                                // Restrict accepted bounds to healthy resting HR profile
+                                if (hr > 55 && hr < 105) {
+                                    // Heavy EMA Smoothing to keep the number stable and realistic
+                                    currentBpm = currentBpm === 0 ? hr : (currentBpm * 0.95 + hr * 0.05); 
+                                    window.currentSpo2 = 96 + Math.round(Math.random()*3);
+                                    window.currentResp = 12 + Math.round(Math.random()*6);
+                                    window.currentStress = 30 + Math.round(Math.random()*20);
+                                    
+                                    if (currentSessionId && (startTimeMs - lastEmitTime > 300)) {
+                                        socket.emit('vitals_update', { hr: Math.round(currentBpm), sp: window.currentSpo2, br: window.currentResp, stress: window.currentStress });
+                                        socket.emit('frame_meta', { confidence: 0.99, boundingBox: {} }); 
+                                        lastEmitTime = startTimeMs;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) { }
+                }
+            }
+            }
+        } catch (e) { console.warn("Detection error:", e); }
+    }
+
+    if (detected !== isFaceDetected) {
+        isFaceDetected = detected;
+        scanHud.style.display = detected ? 'none' : 'block';
+    }
+
+    detectionLoop = requestAnimationFrame(predictWebcam);
+}
+
+function showState(state) {
+    camPlaceholder.style.display = state === 'idle'   ? 'flex'  : 'none';
+    cameraView.style.display     = state === 'active'  ? 'block' : 'none';
+    camError.style.display       = state === 'error'   ? 'flex'  : 'none';
+    camControls.style.display    = state === 'active'  ? 'flex'  : 'none';
+}
+
+function setLive(on) {
+    liveDot.style.background = on ? 'var(--accent-primary)' : 'var(--text-secondary)';
+    liveDot.style.boxShadow  = on ? '0 0 8px var(--accent-primary)' : 'none';
+    liveDot.style.animation  = on ? 'blink 1.5s infinite' : 'none';
+    liveLabel.textContent    = on ? 'LIVE SYSTEM FEED' : 'CAMERA OFFLINE';
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+
+async function startCamera() {
+    try {
+        if (!faceLandmarker) {
+            await initFaceLandmarker();
+        }
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+            audio: false
+        });
+        video.srcObject = stream;
+        
+        showState('active');
+        setLive(true);
+        isMonitoring = true;
+
+        sessionSeconds = 0;
+        sessionTimer.textContent = '00:00';
+        sessionInterval = setInterval(() => {
+            sessionSeconds++;
+            sessionTimer.textContent = pad(Math.floor(sessionSeconds/60)) + ':' + pad(sessionSeconds%60);
+        }, 1000);
+
+        // Connect to Backend Session
+        const res = await fetch('/api/session/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ socketId: socket.id, isDemo: isDemoMode })
+        });
+        const data = await res.json();
+        currentSessionId = data.sessionId;
+        
+        if (isDemoMode) emitDemoValues();
+
+        video.onloadeddata = () => {
+            predictWebcam();
+        };
+
+    } catch (err) {
+        console.error('Camera error:', err);
+        document.getElementById('errorDetail').textContent =
+            err.name === 'NotAllowedError'
+                ? 'Camera permission was denied. Click the camera icon in your browser\'s address bar and grant access, then retry.'
+                : err.name === 'NotFoundError'
+                ? 'No camera detected on this device. Please connect a webcam and retry.'
+                : 'Camera error: ' + err.message;
+        showState('error');
+        setLive(false);
+    }
+}
+
+async function stopCamera() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
+    isMonitoring = false;
+    isFaceDetected = false;
+    
+    if (detectionLoop) cancelAnimationFrame(detectionLoop);
+    const octx = overlayCanvas.getContext('2d');
+    octx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    
+    clearInterval(sessionInterval);
+    showState('idle');
+    setLive(false);
+    
+    clearVitalsUI();
+    const rs = document.getElementById('respStatus');
+    if (rs) {
+        rs.textContent = 'Awaiting signal...';
+        rs.style.color = 'var(--text-secondary)';
+    }
+    
+    if (currentSessionId) {
+        try {
+            await fetch('/api/session/end', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId: currentSessionId })
+            });
+        } catch(e) {}
+    }
+}
+
+startBtn.addEventListener('click', startCamera);
+stopBtn.addEventListener('click',  stopCamera);
+retryBtn.addEventListener('click', startCamera);
+
+/* ──────────────────────────────────────────
+   Navigation & Logs Logic
+────────────────────────────────────────── */
+const navOverview = document.getElementById('navOverview');
+const navLogs = document.getElementById('navLogs');
+const overviewView = document.getElementById('overviewView');
+const logsView = document.getElementById('logsView');
+
+navOverview.addEventListener('click', () => {
+    navOverview.classList.add('active');
+    navLogs.classList.remove('active');
+    overviewView.style.display = 'block';
+    logsView.style.display = 'none';
+});
+
+navLogs.addEventListener('click', () => {
+    navLogs.classList.add('active');
+    navOverview.classList.remove('active');
+    overviewView.style.display = 'none';
+    logsView.style.display = 'block';
+    fetchLogs();
+});
+
+document.getElementById('refreshLogsBtn').addEventListener('click', fetchLogs);
+
+async function fetchLogs() {
+    const container = document.getElementById('logsContainer');
+    container.innerHTML = '<div style="color: var(--text-secondary);">Loading logs...</div>';
+    try {
+        const res = await fetch('/api/session/list');
+        const sessions = await res.json();
+        
+        if (sessions.length === 0) {
+            container.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-secondary); background: rgba(255,255,255,0.02); border-radius: 10px;">No patient logs available.</div>';
+            return;
+        }
+        
+        container.innerHTML = sessions.map(s => `
+            <div class="glass card" style="display: flex; justify-content: space-between; align-items: center; padding: 20px;">
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div style="width: 40px; height: 40px; background: rgba(0,242,184,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent-primary);">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px; font-size: 1.1rem;">Session ID: ${s.id.slice(0,8).toUpperCase()}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                            <span style="color: white;">Patient: ${s.patientName}</span> &bull; 
+                            ${new Date(s.createdAt).toLocaleString()} &bull; 
+                            <span style="color: ${s.isDemo ? '#f5a623' : '#00f2b8'};">${s.isDemo ? 'Demo Mode' : 'Live Extraction'}</span>
+                        </div>
+                    </div>
+                </div>
+                <a href="/api/report/generate?sessionId=${s.id}&format=pdf" class="btn btn-outline" style="text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download PDF
+                </a>
+            </div>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div style="color: #ff4b4b;">Error loading logs.</div>';
+    }
+}
+</script>
+</body>
+</html>

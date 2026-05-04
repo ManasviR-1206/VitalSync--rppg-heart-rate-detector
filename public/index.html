@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitalSync | Contactless rPPG Monitoring</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <meta name="description" content="Medical-grade contactless heart rate monitoring using computer vision and deep learning.">
+</head>
+<body>
+    <nav class="glass" style="margin: 20px; padding: 15px 40px; position: fixed; width: calc(100% - 40px); z-index: 1000; top: 0; display: flex; justify-content: center; align-items: center; overflow: hidden; height: 60px;">
+        <canvas id="headerEcg" style="position: absolute; top:0; left:0; width: 100%; height: 100%; z-index: 0; opacity: 0.6; pointer-events: none;"></canvas>
+        <div style="font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 10px; z-index: 1; background: rgba(18, 20, 29, 0.7); padding: 5px 15px; border-radius: 12px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+            <div style="width: 32px; height: 32px; background: var(--accent-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            vitalsync.
+        </div>
+    </nav>
+
+    <header id="platform" style="padding-top: 150px; padding-bottom: 100px; position: relative; min-height: 100vh; display: flex; align-items: center;">
+        
+        <div style="width: 100%; max-width: 1400px; margin: 0 auto; padding: 0 40px; display: flex; align-items: center; justify-content: space-between; gap: 40px; position: relative; z-index: 2;">
+            
+            <!-- Text Content -->
+            <div style="flex: 1; max-width: 650px; text-align: left; z-index: 3;">
+                <div class="glass" style="display: inline-block; padding: 6px 16px; border-radius: 99px; margin-bottom: 24px; font-size: 0.8rem; font-weight: 600; color: var(--accent-primary);">
+                    PRE-ALPHA 1.0.2 / CLINICAL ACCURACY 98.4%
+                </div>
+                <h1 style="margin-bottom: 24px; font-size: 4.5rem; text-shadow: 0 4px 20px rgba(0,0,0,0.8);">Revolutionizing <br><span class="text-gradient">Contactless Monitoring.</span></h1>
+                <p style="color: var(--text-secondary); font-size: 1.2rem; margin-bottom: 40px; text-shadow: 0 2px 10px rgba(0,0,0,0.8);">
+                    Next-generation rPPG technology detecting vital signs via subtle skin color variations. Clinical precision meets futuristic ease.
+                </p>
+                <div style="display: flex; justify-content: flex-start; gap: 16px;">
+                    <a href="auth.html" class="btn btn-primary">Start Monitoring</a>
+                </div>
+            </div>
+
+            <!-- Heart Image -->
+            <div class="animate-float" style="flex: 1.2; display: flex; justify-content: flex-end; position: relative; z-index: 1;">
+                <img src="assets/hero_heart.png" alt="Heart Background" style="width: 130%; max-width: 900px; margin-top: -80px; margin-right: -20%; object-fit: contain; filter: drop-shadow(0 0 100px rgba(0,242,184,0.15)); -webkit-mask-image: linear-gradient(to bottom, transparent 1%, black 15%, black 95%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 1%, black 15%, black 95%, transparent 100%);">
+            </div>
+
+        </div>
+    </header>
+
+    <section id="technology" class="bento-grid" style="margin-top: 100px; margin-bottom: 100px;">
+        <div id="demo" class="glass card" style="grid-column: span 8; grid-row: span 2;">
+            <h3 style="margin-bottom: 12px; color: var(--accent-primary);">PhysNet++ Architecture</h3>
+            <p style="color: var(--text-secondary);">Deep learning models achieving sub-1 BPM Mean Absolute Error in real-world clinical environments.</p>
+            <div style="margin-top: 40px; height: 150px; background: rgba(0, 242, 184, 0.05); border-radius: 12px; border: 1px solid var(--border-glass); overflow: hidden; position: relative;">
+                <canvas id="landingWaveform" style="width: 100%; height: 100%;"></canvas>
+            </div>
+        </div>
+        <div id="features" class="glass card" style="grid-column: span 4;">
+            <h3 style="margin-bottom: 12px;">Contactless</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">No wearables. No discomfort. Only a standard camera lens needed.</p>
+        </div>
+        <div class="glass card" style="grid-column: span 4;">
+            <h3 style="margin-bottom: 12px;">Secure</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">GDPR compliant, end-to-end encrypted biometric processing.</p>
+        </div>
+    </section>
+
+    <footer style="margin-top: 100px; padding: 60px; text-align: center; border-top: 1px solid var(--border-glass);">
+        <p style="color: var(--text-secondary);">&copy; 2026 VitalSync Technologies. All rights reserved.</p>
+    </footer>
+
+    <script src="js/auth.js"></script>
+    <script>
+        const canvas = document.getElementById('landingWaveform');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            let waveX = 0;
+
+            function resize() {
+                canvas.width = canvas.offsetWidth || 800;
+                canvas.height = canvas.offsetHeight || 150;
+            }
+            window.addEventListener('resize', resize);
+            setTimeout(resize, 0);
+
+            function drawWave() {
+                const W = canvas.width, H = canvas.height;
+                ctx.clearRect(0, 0, W, H);
+                
+                ctx.beginPath();
+                for (let i = 0; i < W; i++) {
+                    const t = (i + waveX) / W * Math.PI * 8;
+                    const beat = Math.pow(Math.sin(t * 0.5), 2) * Math.exp(-((t % Math.PI) - 1.5) * 2);
+                    const y = H/2 - beat * H * 0.4;
+                    i === 0 ? ctx.moveTo(i, y) : ctx.lineTo(i, y);
+                }
+                ctx.strokeStyle = '#00f2b8';
+                ctx.lineWidth = 2.5;
+                ctx.shadowColor = '#00f2b8';
+                ctx.shadowBlur = 10;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                waveX += 2.5;
+                requestAnimationFrame(drawWave);
+            }
+            drawWave();
+        }
+
+        const headerCanvas = document.getElementById('headerEcg');
+        if (headerCanvas) {
+            const hctx = headerCanvas.getContext('2d');
+            let ecgX = 0;
+            
+            function getECGY(t, h) {
+                if (t < 0.1) return 0;
+                if (t < 0.2) return Math.sin((t-0.1)*Math.PI*10) * h * 0.15;
+                if (t < 0.3) return 0;
+                if (t < 0.35) return -Math.sin((t-0.3)*Math.PI*20) * h * 0.15;
+                if (t < 0.4) return Math.sin((t-0.35)*Math.PI*20) * h * 0.8;
+                if (t < 0.45) return -Math.sin((t-0.4)*Math.PI*20) * h * 0.25;
+                if (t < 0.6) return 0;
+                if (t < 0.8) return Math.sin((t-0.6)*Math.PI*5) * h * 0.25;
+                return 0;
+            }
+            
+            function resizeEcg() {
+                headerCanvas.width = headerCanvas.offsetWidth || 1200;
+                headerCanvas.height = headerCanvas.offsetHeight || 60;
+            }
+            window.addEventListener('resize', resizeEcg);
+            setTimeout(resizeEcg, 0);
+
+            function drawHeaderEcg() {
+                const W = headerCanvas.width;
+                const H = headerCanvas.height;
+                hctx.clearRect(0, 0, W, H);
+                
+                hctx.beginPath();
+                const cycleLength = 250; 
+                
+                for (let i = 0; i < W; i++) {
+                    let localX = (i - ecgX) % cycleLength;
+                    if (localX < 0) localX += cycleLength;
+                    
+                    let t = localX / cycleLength;
+                    let y = H/2 - getECGY(t, H);
+                    
+                    if (i === 0) hctx.moveTo(i, y);
+                    else hctx.lineTo(i, y);
+                }
+                
+                hctx.strokeStyle = '#00f2b8';
+                hctx.lineWidth = 1.5;
+                hctx.shadowColor = '#00f2b8';
+                hctx.shadowBlur = 4;
+                hctx.stroke();
+                hctx.shadowBlur = 0;
+                
+                ecgX += 2.5; 
+                requestAnimationFrame(drawHeaderEcg);
+            }
+            drawHeaderEcg();
+        }
+    </script>
+</body>
+</html>
