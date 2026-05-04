@@ -24,7 +24,7 @@ app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '../Front-End')));
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -47,7 +47,7 @@ io.on('connection', (socket) => {
 // Fallback to index.html for SPA-like behavior
 app.get('*', (req, res) => {
     if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, '../Front-End', 'index.html'));
 });
 
 // Sync Database and Start Server
